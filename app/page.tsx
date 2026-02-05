@@ -1,5 +1,6 @@
 "use client";
 
+import Footer from "@/components/Footer";
 import React, { useState } from "react";
 
 const Page = () => {
@@ -775,17 +776,9 @@ const Page = () => {
           >
             <div className="nav-icon">💬</div>
           </div>
-
-          {/* <div
-            className={`nav-item ${
-              activeTab === "settings" ? "nav-item-active" : ""
-            }`}
-            onClick={() => setActiveTab("settings")}
-          >
-            <div className="nav-icon">⚙️</div>
-          </div> */}
         </div>
       </nav>
+      <Footer />
     </div>
   );
 };
