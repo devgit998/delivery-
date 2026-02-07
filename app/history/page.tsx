@@ -1,5 +1,6 @@
 "use client";
 
+import Header from "@/components/Header";
 import React, { useState } from "react";
 
 const Page = () => {
@@ -64,6 +65,9 @@ const Page = () => {
 
   return (
     <div className="history-container">
+      <div>
+        <Header />
+      </div>
       <style jsx>{`
         @import url("https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700;800&family=Azeret+Mono:wght@400;600&display=swap");
 
