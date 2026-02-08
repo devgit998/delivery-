@@ -1,67 +1,145 @@
 "use client";
 
 import Header from "@/components/Header";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface Stage {
+  name: string;
+  completed: boolean;
+  current?: boolean;
+}
+
+interface Shipment {
+  orderId: string;
+  status: string;
+  statusColor: string;
+  from: {
+    name: string;
+    city: string;
+    state: string;
+  };
+  to: {
+    name: string;
+    city: string;
+    state: string;
+  };
+  placedDate: string;
+  estimatedDate: string;
+  progress: number;
+  stages: Stage[];
+  createdAt?: Date; // Added for client-side sorting
+}
 
 const Page = () => {
+  const { user } = useAuth();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [shipments] = useState([
-    {
-      orderId: "ORD-123456789",
-      status: "In Transit",
-      statusColor: "orange",
-      from: "Los Angeles",
-      to: "New York",
-      placedDate: "12 Jan, 2025",
-      estimatedDate: "26 Jan, 2025",
-      progress: 50, // percentage
-      stages: [
-        { name: "Packed", completed: true },
-        { name: "Shipped", completed: true },
-        { name: "In Transit", completed: false, current: true },
-        { name: "Delivered", completed: false },
-      ],
-    },
-    {
-      orderId: "ORD-987654321",
-      status: "Delivered",
-      statusColor: "orange-full",
-      from: "Los Angeles",
-      to: "San Francisco",
-      placedDate: "8 Jan, 2025",
-      estimatedDate: "12 Jan, 2025",
-      progress: 100,
-      stages: [
-        { name: "Packed", completed: true },
-        { name: "Shipped", completed: true },
-        { name: "In Transit", completed: true },
-        { name: "Delivered", completed: true, current: true },
-      ],
-    },
-    {
-      orderId: "ORD-456789123",
-      status: "Shipped",
-      statusColor: "orange",
-      from: "San Diego",
-      to: "Seattle",
-      placedDate: "14 Jan, 2025",
-      estimatedDate: "28 Jan, 2025",
-      progress: 25,
-      stages: [
-        { name: "Packed", completed: true },
-        { name: "Shipped", completed: false, current: true },
-        { name: "In Transit", completed: false },
-        { name: "Delivered", completed: false },
-      ],
-    },
-  ]);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchDeliveries();
+    }
+  }, [user]);
+
+  const fetchDeliveries = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const deliveriesRef = collection(db, "deliveries");
+      
+      // Simplified query without orderBy to avoid index requirement
+      const q = query(
+        deliveriesRef,
+        where("userId", "==", user.uid)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const deliveriesData: Shipment[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Calculate progress based on status
+        let progress = 0;
+        let statusColor = "orange";
+        
+        if (data.status === "Delivered") {
+          progress = 100;
+          statusColor = "orange-full";
+        } else if (data.status === "In Transit") {
+          progress = 50;
+        } else if (data.status === "Shipped") {
+          progress = 25;
+        } else if (data.status === "Packed") {
+          progress = 15;
+        }
+
+        // Format dates
+        const createdAt = data.createdAt?.toDate?.() || new Date();
+        const estimatedDate = new Date(data.estimatedDeliveryDate);
+        
+        deliveriesData.push({
+          orderId: data.orderId,
+          status: data.status,
+          statusColor: statusColor,
+          from: {
+            name: data.from.name,
+            city: data.from.city,
+            state: data.from.state,
+          },
+          to: {
+            name: data.to.name,
+            city: data.to.city,
+            state: data.to.state,
+          },
+          placedDate: createdAt.toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          estimatedDate: estimatedDate.toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          progress: progress,
+          stages: data.stages || [],
+          createdAt: createdAt, // Store for sorting
+        });
+      });
+
+      // Sort client-side by createdAt descending (newest first)
+      deliveriesData.sort((a, b) => {
+        const dateA = a.createdAt?.getTime() || 0;
+        const dateB = b.createdAt?.getTime() || 0;
+        return dateB - dateA;
+      });
+
+      setShipments(deliveriesData);
+    } catch (error) {
+      console.error("Error fetching deliveries:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredShipments = shipments.filter(
     (shipment) =>
       shipment.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      shipment.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      shipment.to.toLowerCase().includes(searchQuery.toLowerCase())
+      shipment.from.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      shipment.to.city.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleShipmentClick = (orderId: string) => {
+    router.push(`/tracking/${orderId}`);
+  };
 
   return (
     <div className="history-container">
@@ -365,6 +443,29 @@ const Page = () => {
           pointer-events: none;
         }
 
+        /* Loading state */
+        .loading-container {
+          text-align: center;
+          padding: 80px 20px;
+          color: #666666;
+        }
+
+        .loading-spinner {
+          width: 48px;
+          height: 48px;
+          border: 4px solid #1a1a1a;
+          border-top-color: #ff5500;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
         /* Shipments list */
         .shipments-list {
           display: flex;
@@ -659,7 +760,7 @@ const Page = () => {
           <div className="user-info">
             <div className="user-avatar">👤</div>
             <div className="user-details">
-              <div className="user-greeting">Hi Tochi,</div>
+              <div className="user-greeting">Hi {user?.displayName?.split(' ')[0] || 'User'},</div>
               <div className="user-location">
                 Los Angeles <span>▼</span>
               </div>
@@ -688,91 +789,104 @@ const Page = () => {
           </div>
         </div>
 
-        {/* Shipments list */}
-        <div className="shipments-list">
-          {filteredShipments.length > 0 ? (
-            filteredShipments.map((shipment, index) => (
-              <div
-                key={shipment.orderId}
-                className={`shipment-card ${
-                  shipment.statusColor === "orange-full"
-                    ? "shipment-card-full"
-                    : ""
-                }`}
-              >
-                {/* Card header */}
-                <div className="card-header">
-                  <div className="order-id">{shipment.orderId}</div>
-                  <div className="status-badge">{shipment.status}</div>
-                </div>
+        {/* Loading state */}
+        {loading ? (
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Loading your shipments...</p>
+          </div>
+        ) : (
+          /* Shipments list */
+          <div className="shipments-list">
+            {filteredShipments.length > 0 ? (
+              filteredShipments.map((shipment, index) => (
+                <div
+                  key={shipment.orderId}
+                  className={`shipment-card ${
+                    shipment.statusColor === "orange-full"
+                      ? "shipment-card-full"
+                      : ""
+                  }`}
+                  onClick={() => handleShipmentClick(shipment.orderId)}
+                >
+                  {/* Card header */}
+                  <div className="card-header">
+                    <div className="order-id">{shipment.orderId}</div>
+                    <div className="status-badge">{shipment.status}</div>
+                  </div>
 
-                {/* Card info */}
-                <div className="card-info">
-                  <div className="info-group">
-                    <div className="info-label">From</div>
-                    <div className="info-value">{shipment.from}</div>
+                  {/* Card info */}
+                  <div className="card-info">
+                    <div className="info-group">
+                      <div className="info-label">From</div>
+                      <div className="info-value">{shipment.from.city}, {shipment.from.state}</div>
+                    </div>
+                    <div className="info-group">
+                      <div className="info-label">To</div>
+                      <div className="info-value">{shipment.to.city}, {shipment.to.state}</div>
+                    </div>
+                    <div className="info-group">
+                      <div className="info-label">Placed by</div>
+                      <div className="info-value">{shipment.placedDate}</div>
+                    </div>
+                    <div className="info-group">
+                      <div className="info-label">Estimated Date</div>
+                      <div className="info-value">{shipment.estimatedDate}</div>
+                    </div>
                   </div>
-                  <div className="info-group">
-                    <div className="info-label">To</div>
-                    <div className="info-value">{shipment.to}</div>
-                  </div>
-                  <div className="info-group">
-                    <div className="info-label">Placed by</div>
-                    <div className="info-value">{shipment.placedDate}</div>
-                  </div>
-                  <div className="info-group">
-                    <div className="info-label">Estimated Date</div>
-                    <div className="info-value">{shipment.estimatedDate}</div>
-                  </div>
-                </div>
 
-                {/* Progress tracker */}
-                <div className="progress-tracker">
-                  <div className="progress-line">
-                    <div
-                      className="progress-fill"
-                      style={{ width: `${shipment.progress}%` }}
-                    ></div>
-                  </div>
-                  <div className="stages">
-                    {shipment.stages.map((stage, idx) => (
-                      <div key={idx} className="stage">
-                        <div
-                          className={`stage-dot ${
-                            stage.completed
-                              ? "stage-dot-completed"
-                              : stage.current
-                              ? "stage-dot-current"
-                              : ""
-                          }`}
-                        ></div>
-                        <div
-                          className={`stage-name ${
-                            stage.completed || stage.current
-                              ? stage.completed
-                                ? "stage-name-completed"
-                                : "stage-name-current"
-                              : ""
-                          }`}
-                        >
-                          {stage.name}
+                  {/* Progress tracker */}
+                  <div className="progress-tracker">
+                    <div className="progress-line">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${shipment.progress}%` }}
+                      ></div>
+                    </div>
+                    <div className="stages">
+                      {shipment.stages.map((stage, idx) => (
+                        <div key={idx} className="stage">
+                          <div
+                            className={`stage-dot ${
+                              stage.completed
+                                ? "stage-dot-completed"
+                                : stage.current
+                                ? "stage-dot-current"
+                                : ""
+                            }`}
+                          ></div>
+                          <div
+                            className={`stage-name ${
+                              stage.completed || stage.current
+                                ? stage.completed
+                                  ? "stage-name-completed"
+                                  : "stage-name-current"
+                                : ""
+                            }`}
+                          >
+                            {stage.name}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon">📦</div>
+                <div className="empty-title">
+                  {searchQuery ? "No shipments found" : "No deliveries yet"}
+                </div>
+                <div className="empty-description">
+                  {searchQuery
+                    ? "Try adjusting your search query"
+                    : "Create your first delivery to get started"}
+                </div>
               </div>
-            ))
-          ) : (
-            <div className="empty-state">
-              <div className="empty-icon">📦</div>
-              <div className="empty-title">No shipments found</div>
-              <div className="empty-description">
-                Try adjusting your search query
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

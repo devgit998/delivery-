@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
-const Page = () => {
+const SignInPage = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -10,23 +13,60 @@ const Page = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState("");
+
+  const { signIn, signInWithGoogle, signInWithGithub } = useAuth();
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    setError(""); // Clear error on input change
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      await signIn(formData.email, formData.password);
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Failed to sign in. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    console.log("Form submitted:", formData);
-    setIsLoading(false);
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await signInWithGoogle();
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Failed to sign in with Google.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGithubSignIn = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await signInWithGithub();
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Failed to sign in with GitHub.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -261,6 +301,19 @@ const Page = () => {
           font-size: 16px;
           font-weight: 500;
           letter-spacing: 0.3px;
+        }
+
+        /* Error message */
+        .error-message {
+          background: rgba(255, 85, 0, 0.1);
+          border: 1px solid rgba(255, 85, 0, 0.3);
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 24px;
+          color: #ff5500;
+          font-size: 14px;
+          font-weight: 500;
+          animation: fadeInUp 0.3s ease-out;
         }
 
         /* Form styles */
@@ -514,6 +567,11 @@ const Page = () => {
             0 0 20px rgba(255, 85, 0, 0.2);
         }
 
+        .social-button:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
         .social-icon {
           width: 20px;
           height: 20px;
@@ -576,6 +634,9 @@ const Page = () => {
             <p className="subtitle">Sign in to continue tracking</p>
           </div>
 
+          {/* Error Message */}
+          {error && <div className="error-message">{error}</div>}
+
           {/* Form */}
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -591,6 +652,7 @@ const Page = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -608,12 +670,14 @@ const Page = () => {
                   value={formData.password}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label="Toggle password visibility"
+                  disabled={isLoading}
                 >
                   {showPassword ? "🙈" : "👁️"}
                 </button>
@@ -628,6 +692,7 @@ const Page = () => {
                   className="checkbox-input"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={isLoading}
                 />
                 <label htmlFor="remember" className="checkbox-label">
                   Remember me
@@ -656,7 +721,12 @@ const Page = () => {
 
           {/* Social buttons */}
           <div className="social-buttons">
-            <button className="social-button" type="button">
+            <button 
+              className="social-button" 
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
               <svg
                 className="social-icon"
                 viewBox="0 0 24 24"
@@ -682,7 +752,12 @@ const Page = () => {
               Google
             </button>
 
-            <button className="social-button" type="button">
+            <button 
+              className="social-button" 
+              type="button"
+              onClick={handleGithubSignIn}
+              disabled={isLoading}
+            >
               <svg
                 className="social-icon"
                 viewBox="0 0 24 24"
@@ -696,7 +771,7 @@ const Page = () => {
 
           {/* Footer */}
           <div className="footer">
-            Don&apos;t have an account? <a href="#">Sign up</a>
+            Don&apos;t have an account? <Link href="/auth/sign-up">Sign up</Link>
           </div>
         </div>
       </div>
@@ -704,4 +779,4 @@ const Page = () => {
   );
 };
 
-export default Page;
+export default SignInPage;
