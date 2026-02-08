@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
-const Page = () => {
+const SignUpPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -11,23 +14,66 @@ const Page = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [error, setError] = useState("");
+
+  const { signUp, signInWithGoogle, signInWithGithub } = useAuth();
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    setError(""); // Clear error on input change
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms of Service and Privacy Policy");
+      return;
+    }
+
     setIsLoading(true);
+    setError("");
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      await signUp(formData.email, formData.password, formData.name);
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Failed to create account. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    console.log("Form submitted:", formData);
-    setIsLoading(false);
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await signInWithGoogle();
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Failed to sign up with Google.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGithubSignIn = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await signInWithGithub();
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Failed to sign up with GitHub.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -262,6 +308,19 @@ const Page = () => {
           font-size: 16px;
           font-weight: 500;
           letter-spacing: 0.3px;
+        }
+
+        /* Error message */
+        .error-message {
+          background: rgba(255, 85, 0, 0.1);
+          border: 1px solid rgba(255, 85, 0, 0.3);
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 24px;
+          color: #ff5500;
+          font-size: 14px;
+          font-weight: 500;
+          animation: fadeInUp 0.3s ease-out;
         }
 
         /* Form styles */
@@ -512,6 +571,11 @@ const Page = () => {
             0 0 20px rgba(255, 85, 0, 0.2);
         }
 
+        .social-button:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
         .social-icon {
           width: 20px;
           height: 20px;
@@ -568,6 +632,9 @@ const Page = () => {
             <p className="subtitle">Start tracking your deliveries today</p>
           </div>
 
+          {/* Error Message */}
+          {error && <div className="error-message">{error}</div>}
+
           {/* Form */}
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -583,6 +650,7 @@ const Page = () => {
                 value={formData.name}
                 onChange={handleChange}
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -599,6 +667,7 @@ const Page = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -616,12 +685,14 @@ const Page = () => {
                   value={formData.password}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label="Toggle password visibility"
+                  disabled={isLoading}
                 >
                   {showPassword ? "🙈" : "👁️"}
                 </button>
@@ -636,6 +707,7 @@ const Page = () => {
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
                 required
+                disabled={isLoading}
               />
               <label htmlFor="terms" className="checkbox-label">
                 I agree to the <a href="#">Terms of Service</a> and{" "}
@@ -661,7 +733,12 @@ const Page = () => {
 
           {/* Social buttons */}
           <div className="social-buttons">
-            <button className="social-button" type="button">
+            <button 
+              className="social-button" 
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
               <svg
                 className="social-icon"
                 viewBox="0 0 24 24"
@@ -687,7 +764,12 @@ const Page = () => {
               Google
             </button>
 
-            <button className="social-button" type="button">
+            <button 
+              className="social-button" 
+              type="button"
+              onClick={handleGithubSignIn}
+              disabled={isLoading}
+            >
               <svg
                 className="social-icon"
                 viewBox="0 0 24 24"
@@ -701,7 +783,7 @@ const Page = () => {
 
           {/* Footer */}
           <div className="footer">
-            Already have an account? <a href="#">Sign in</a>
+            Already have an account? <Link href="/auth/sign-in">Sign in</Link>
           </div>
         </div>
       </div>
@@ -709,4 +791,4 @@ const Page = () => {
   );
 };
 
-export default Page;
+export default SignUpPage;

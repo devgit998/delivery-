@@ -5,6 +5,24 @@ import { useParams, useRouter } from "next/navigation";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
+import dynamic from "next/dynamic";
+
+// Dynamically import MapComponent to avoid SSR issues with Leaflet
+const MapComponent = dynamic(() => import("@/components/Mapcomponent"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ 
+      height: "280px", 
+      background: "#0a0a0a", 
+      display: "flex", 
+      alignItems: "center", 
+      justifyContent: "center",
+      color: "#666666"
+    }}>
+      Loading map...
+    </div>
+  ),
+});
 
 interface TrackingData {
   orderId: string;
@@ -15,6 +33,7 @@ interface TrackingData {
     city: string;
     state: string;
     zip: string;
+    coordinates?: { lat: number; lng: number };
   };
   to: {
     name: string;
@@ -22,6 +41,7 @@ interface TrackingData {
     city: string;
     state: string;
     zip: string;
+    coordinates?: { lat: number; lng: number };
   };
   placedDate: string;
   estimatedDate: string;
@@ -75,6 +95,10 @@ const TrackingPage = () => {
       const createdAt = data.createdAt?.toDate?.() || new Date();
       const estimatedDate = new Date(data.estimatedDeliveryDate);
 
+      // Get coordinates (you can add these to your Firebase data or use geocoding API)
+      const fromCoordinates = data.from.coordinates || await getCoordinates(data.from.city, data.from.state);
+      const toCoordinates = data.to.coordinates || await getCoordinates(data.to.city, data.to.state);
+
       setTrackingData({
         orderId: data.orderId,
         status: data.status,
@@ -84,6 +108,7 @@ const TrackingPage = () => {
           city: data.from.city,
           state: data.from.state,
           zip: data.from.zip,
+          coordinates: fromCoordinates,
         },
         to: {
           name: data.to.name,
@@ -91,6 +116,7 @@ const TrackingPage = () => {
           city: data.to.city,
           state: data.to.state,
           zip: data.to.zip,
+          coordinates: toCoordinates,
         },
         placedDate: createdAt.toLocaleDateString("en-US", {
           day: "numeric",
@@ -113,6 +139,23 @@ const TrackingPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Simple geocoding function (you can replace with actual geocoding API)
+  const getCoordinates = async (city: string, state: string): Promise<{ lat: number; lng: number }> => {
+    // Default coordinates for common cities (you should use a real geocoding API in production)
+    const cityCoordinates: { [key: string]: { lat: number; lng: number } } = {
+      "Los Angeles": { lat: 34.0522, lng: -118.2437 },
+      "New York": { lat: 40.7128, lng: -74.0060 },
+      "Chicago": { lat: 41.8781, lng: -87.6298 },
+      "San Francisco": { lat: 37.7749, lng: -122.4194 },
+      "Miami": { lat: 25.7617, lng: -80.1918 },
+      "Seattle": { lat: 47.6062, lng: -122.3321 },
+      "Boston": { lat: 42.3601, lng: -71.0589 },
+      "Austin": { lat: 30.2672, lng: -97.7431 },
+    };
+
+    return cityCoordinates[city] || { lat: 34.0522, lng: -118.2437 };
   };
 
   if (loading) {
@@ -395,188 +438,6 @@ const TrackingPage = () => {
           border-bottom: 1px solid #1a1a1a;
         }
 
-        .map-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            135deg,
-            rgba(0, 0, 0, 0.7) 0%,
-            rgba(0, 0, 0, 0.5) 100%
-          );
-          backdrop-filter: blur(2px);
-        }
-
-        .map-pattern {
-          position: absolute;
-          inset: 0;
-          opacity: 0.4;
-          background-color: #0d1117;
-          background-image: 
-            /* Major roads */ linear-gradient(
-              45deg,
-              transparent 48%,
-              rgba(60, 70, 80, 0.5) 48%,
-              rgba(60, 70, 80, 0.5) 52%,
-              transparent 52%
-            ),
-            linear-gradient(
-              -45deg,
-              transparent 48%,
-              rgba(60, 70, 80, 0.5) 48%,
-              rgba(60, 70, 80, 0.5) 52%,
-              transparent 52%
-            ),
-            /* Grid streets */
-              repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 40px,
-                rgba(255, 255, 255, 0.08) 40px,
-                rgba(255, 255, 255, 0.08) 42px
-              ),
-            repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 40px,
-              rgba(255, 255, 255, 0.08) 40px,
-              rgba(255, 255, 255, 0.08) 42px
-            ),
-            /* Blocks */
-              repeating-linear-gradient(
-                0deg,
-                rgba(20, 25, 30, 0.8),
-                rgba(20, 25, 30, 0.8) 80px,
-                rgba(15, 20, 25, 0.9) 80px,
-                rgba(15, 20, 25, 0.9) 160px
-              ),
-            repeating-linear-gradient(
-              90deg,
-              rgba(20, 25, 30, 0.8),
-              rgba(20, 25, 30, 0.8) 80px,
-              rgba(15, 20, 25, 0.9) 80px,
-              rgba(15, 20, 25, 0.9) 160px
-            );
-          background-size: 200px 200px, 200px 200px, 100% 100%, 100% 100%,
-            100% 100%, 100% 100%;
-        }
-
-        .map-buildings {
-          position: absolute;
-          inset: 0;
-          opacity: 0.3;
-        }
-
-        .building {
-          position: absolute;
-          background: rgba(40, 50, 60, 0.6);
-          border: 1px solid rgba(60, 70, 80, 0.4);
-        }
-
-        .building-1 {
-          width: 35px;
-          height: 25px;
-          top: 15%;
-          left: 12%;
-        }
-
-        .building-2 {
-          width: 28px;
-          height: 30px;
-          top: 25%;
-          left: 25%;
-        }
-
-        .building-3 {
-          width: 40px;
-          height: 20px;
-          top: 45%;
-          left: 15%;
-        }
-
-        .building-4 {
-          width: 32px;
-          height: 28px;
-          top: 20%;
-          right: 18%;
-        }
-
-        .building-5 {
-          width: 38px;
-          height: 22px;
-          top: 50%;
-          right: 12%;
-        }
-
-        .building-6 {
-          width: 30px;
-          height: 35px;
-          bottom: 20%;
-          left: 20%;
-        }
-
-        .building-7 {
-          width: 45px;
-          height: 18px;
-          bottom: 15%;
-          right: 25%;
-        }
-
-        .route-line {
-          position: absolute;
-          top: 50%;
-          left: 15%;
-          width: 70%;
-          height: 80%;
-          transform: translateY(-50%);
-          pointer-events: none;
-        }
-
-        .route-path {
-          position: absolute;
-          top: 50%;
-          left: 0;
-          width: 100%;
-          height: 100px;
-          transform: translateY(-50%);
-        }
-
-        .route-svg {
-          width: 100%;
-          height: 100%;
-        }
-
-        .route-dot {
-          position: absolute;
-          width: 12px;
-          height: 12px;
-          background: #ff5500;
-          border-radius: 50%;
-          box-shadow: 0 0 20px rgba(255, 85, 0, 0.8);
-        }
-
-        .route-dot-start {
-          top: 50%;
-          left: 15%;
-          transform: translate(-50%, -50%);
-        }
-
-        .route-dot-end {
-          top: 50%;
-          right: 15%;
-          transform: translate(50%, -50%);
-          animation: dotPulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes dotPulse {
-          0%,
-          100% {
-            transform: translate(50%, -50%) scale(1);
-          }
-          50% {
-            transform: translate(50%, -50%) scale(1.3);
-          }
-        }
-
         .status-badge {
           position: absolute;
           top: 20px;
@@ -591,6 +452,7 @@ const TrackingPage = () => {
             0 0 30px rgba(255, 85, 0, 0.3);
           animation: fadeInDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s
             backwards;
+          z-index: 1000;
         }
 
         @keyframes fadeInDown {
@@ -868,69 +730,16 @@ const TrackingPage = () => {
 
         {/* Main tracking card */}
         <div className="tracking-card">
-          {/* Map section */}
+          {/* Map section with real map */}
           <div className="map-section">
-            <div className="map-overlay"></div>
-            <div className="map-pattern"></div>
-
-            {/* Mock buildings */}
-            <div className="map-buildings">
-              <div className="building building-1"></div>
-              <div className="building building-2"></div>
-              <div className="building building-3"></div>
-              <div className="building building-4"></div>
-              <div className="building building-5"></div>
-              <div className="building building-6"></div>
-              <div className="building building-7"></div>
-            </div>
-
-            {/* Route with curves */}
-            <div className="route-line">
-              <svg
-                className="route-svg"
-                viewBox="0 0 400 100"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient
-                    id="routeGradient"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="0%"
-                  >
-                    <stop offset="0%" stopColor="#ff5500" />
-                    <stop offset="100%" stopColor="#ff3300" />
-                  </linearGradient>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                <path
-                  d="M 0 50 Q 50 30, 100 45 T 200 50 Q 250 55, 300 40 T 400 50"
-                  fill="none"
-                  stroke="url(#routeGradient)"
-                  strokeWidth="3"
-                  filter="url(#glow)"
-                  opacity="0.9"
-                >
-                  <animate
-                    attributeName="stroke-dasharray"
-                    from="0 1000"
-                    to="1000 0"
-                    dur="3s"
-                    repeatCount="indefinite"
-                  />
-                </path>
-              </svg>
-            </div>
-
-            <div className="route-dot route-dot-start"></div>
-            <div className="route-dot route-dot-end"></div>
+            {trackingData.from.coordinates && trackingData.to.coordinates && (
+              <MapComponent
+                from={trackingData.from.coordinates}
+                to={trackingData.to.coordinates}
+                fromLabel={trackingData.from.city}
+                toLabel={trackingData.to.city}
+              />
+            )}
             <div className="status-badge">{trackingData.status}</div>
           </div>
 
