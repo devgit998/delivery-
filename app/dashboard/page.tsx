@@ -205,7 +205,7 @@ const DashboardPage = () => {
         <div className="dashboard-header">
           <div className="welcome-section">
             <h1>Welcome, {getDisplayName()}!</h1>
-            <p>Manage your deliveries and track packages</p>
+            <p>Manage your account and track packages</p>
           </div>
           <div className="header-actions">
             <button className="btn btn-secondary" onClick={logout}>
@@ -236,12 +236,12 @@ const DashboardPage = () => {
                 </div>
               </div>
 
-              <div className="info-item">
+              {/* <div className="info-item">
                 <div className="info-label">Role</div>
                 <div className="info-value">
                   <span className="role-badge">{userData?.role || "loading..."}</span>
                 </div>
-              </div>
+              </div> */}
 
               <div className="info-item">
                 <div className="info-label">Account Created</div>

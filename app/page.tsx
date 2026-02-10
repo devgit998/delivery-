@@ -20,9 +20,9 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // Redirect to dashboard if user is logged in and loader is done
+    // Redirect to welcome if user is logged in and loader is done
     if (!loading && !showLoader && user) {
-      router.push("/dashboard");
+      router.push("/welcome");
     }
   }, [user, loading, showLoader, router]);
 

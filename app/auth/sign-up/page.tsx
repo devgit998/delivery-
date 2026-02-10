@@ -40,7 +40,7 @@ const SignUpPage = () => {
 
     try {
       await signUp(formData.email, formData.password, formData.name);
-      router.push("/dashboard");
+      router.push("/welcome");
     } catch (error: any) {
       setError(error.message || "Failed to create account. Please try again.");
     } finally {
@@ -54,7 +54,7 @@ const SignUpPage = () => {
 
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push("/welcome");
     } catch (error: any) {
       setError(error.message || "Failed to sign up with Google.");
     } finally {
@@ -68,7 +68,7 @@ const SignUpPage = () => {
 
     try {
       await signInWithGithub();
-      router.push("/dashboard");
+      router.push("/welcome");
     } catch (error: any) {
       setError(error.message || "Failed to sign up with GitHub.");
     } finally {

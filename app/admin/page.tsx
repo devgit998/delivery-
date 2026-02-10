@@ -16,7 +16,7 @@ const AdminPage = () => {
   useEffect(() => {
     if (!authLoading) {
       if (!isAdmin()) {
-        router.push("/dashboard");
+        router.push("/welcome");
         return;
       }
       

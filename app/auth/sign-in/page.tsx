@@ -33,7 +33,7 @@ const SignInPage = () => {
 
     try {
       await signIn(formData.email, formData.password);
-      router.push("/dashboard");
+      router.push("/welcome");
     } catch (error: any) {
       setError(error.message || "Failed to sign in. Please check your credentials.");
     } finally {
@@ -47,7 +47,7 @@ const SignInPage = () => {
 
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push("/welcome");
     } catch (error: any) {
       setError(error.message || "Failed to sign in with Google.");
     } finally {
@@ -61,7 +61,7 @@ const SignInPage = () => {
 
     try {
       await signInWithGithub();
-      router.push("/dashboard");
+      router.push("/welcome");
     } catch (error: any) {
       setError(error.message || "Failed to sign in with GitHub.");
     } finally {

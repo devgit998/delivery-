@@ -105,7 +105,7 @@ const AdminDeliveriesPage = () => {
   useEffect(() => {
     if (!authLoading) {
       if (!isAdmin()) {
-        router.push("/dashboard");
+        router.push("/welcome");
         return;
       }
       loadDeliveries();
