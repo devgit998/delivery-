@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuth } from "@/contexts/AuthContext";
 import dynamic from "next/dynamic";
 
 // Dynamically import MapComponent to avoid SSR issues with Leaflet
@@ -54,7 +55,6 @@ interface TrackingData {
 const TrackingPage = () => {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
   const orderId = params.orderId as string;
   
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
@@ -62,13 +62,14 @@ const TrackingPage = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (user && orderId) {
+    if (orderId) {
       fetchTrackingData();
     }
-  }, [user, orderId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
 
   const fetchTrackingData = async () => {
-    if (!user || !orderId) return;
+    if (!orderId) return;
 
     try {
       setLoading(true);
@@ -77,8 +78,7 @@ const TrackingPage = () => {
       const deliveriesRef = collection(db, "deliveries");
       const q = query(
         deliveriesRef,
-        where("orderId", "==", orderId),
-        where("userId", "==", user.uid)
+        where("orderId", "==", orderId)
       );
 
       const querySnapshot = await getDocs(q);
@@ -95,7 +95,7 @@ const TrackingPage = () => {
       const createdAt = data.createdAt?.toDate?.() || new Date();
       const estimatedDate = new Date(data.estimatedDeliveryDate);
 
-      // Get coordinates (you can add these to your Firebase data or use geocoding API)
+      // Get coordinates
       const fromCoordinates = data.from.coordinates || await getCoordinates(data.from.city, data.from.state);
       const toCoordinates = data.to.coordinates || await getCoordinates(data.to.city, data.to.state);
 
@@ -141,9 +141,7 @@ const TrackingPage = () => {
     }
   };
 
-  // Simple geocoding function (you can replace with actual geocoding API)
-  const getCoordinates = async (city: string, state: string): Promise<{ lat: number; lng: number }> => {
-    // Default coordinates for common cities (you should use a real geocoding API in production)
+  const getCoordinates = async (city: string, state: any,): Promise<{ lat: number; lng: number }> => {
     const cityCoordinates: { [key: string]: { lat: number; lng: number } } = {
       "Los Angeles": { lat: 34.0522, lng: -118.2437 },
       "New York": { lat: 40.7128, lng: -74.0060 },
@@ -248,10 +246,10 @@ const TrackingPage = () => {
           <div className="error-icon">📦</div>
           <div className="error-title">Delivery Not Found</div>
           <div className="error-description">
-            {error || "The tracking information you're looking for doesn't exist or you don't have access to it."}
+            {error || "The tracking information you're looking for doesn't exist."}
           </div>
-          <button className="back-button" onClick={() => router.push("/history")}>
-            Go to History
+          <button className="back-button" onClick={() => router.push("/")}>
+            Go Back Home
           </button>
         </div>
       </div>
@@ -278,7 +276,6 @@ const TrackingPage = () => {
           overflow: hidden;
         }
 
-        /* Animated grid background */
         .tracking-container::before {
           content: "";
           position: absolute;
@@ -303,7 +300,6 @@ const TrackingPage = () => {
           }
         }
 
-        /* Glowing orbs */
         .glow-orb {
           position: absolute;
           border-radius: 50%;
@@ -350,7 +346,6 @@ const TrackingPage = () => {
           }
         }
 
-        /* Content wrapper */
         .content-wrapper {
           max-width: 480px;
           margin: 0 auto;
@@ -370,7 +365,6 @@ const TrackingPage = () => {
           }
         }
 
-        /* Header */
         .header {
           display: flex;
           align-items: center;
@@ -408,7 +402,6 @@ const TrackingPage = () => {
           letter-spacing: -0.3px;
         }
 
-        /* Main tracking card */
         .tracking-card {
           background: linear-gradient(
             135deg,
@@ -428,7 +421,6 @@ const TrackingPage = () => {
           margin-bottom: 24px;
         }
 
-        /* Map section */
         .map-section {
           position: relative;
           height: 280px;
@@ -466,7 +458,6 @@ const TrackingPage = () => {
           }
         }
 
-        /* Card content */
         .card-content {
           padding: 32px;
         }
@@ -495,7 +486,6 @@ const TrackingPage = () => {
           letter-spacing: 1px;
         }
 
-        /* Info grid */
         .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -550,7 +540,6 @@ const TrackingPage = () => {
           font-weight: 700;
         }
 
-        /* Delivery partner */
         .delivery-partner {
           display: flex;
           align-items: center;
@@ -624,7 +613,6 @@ const TrackingPage = () => {
           box-shadow: 0 4px 16px rgba(255, 85, 0, 0.3);
         }
 
-        /* Live tracking button */
         .live-tracking-button {
           width: 100%;
           padding: 20px 24px;
@@ -698,7 +686,6 @@ const TrackingPage = () => {
           z-index: 1;
         }
 
-        /* Responsive */
         @media (max-width: 640px) {
           .card-content {
             padding: 24px;
@@ -715,22 +702,18 @@ const TrackingPage = () => {
         }
       `}</style>
 
-      {/* Background elements */}
       <div className="glow-orb glow-orb-1"></div>
       <div className="glow-orb glow-orb-2"></div>
 
       <div className="content-wrapper">
-        {/* Header */}
         <div className="header">
-          <button className="back-button" onClick={() => router.push("/history")}>
+          <button className="back-button" onClick={() => router.push("/")}>
             ←
           </button>
           <h1 className="page-title">Tracking Shipment</h1>
         </div>
 
-        {/* Main tracking card */}
         <div className="tracking-card">
-          {/* Map section with real map */}
           <div className="map-section">
             {trackingData.from.coordinates && trackingData.to.coordinates && (
               <MapComponent
@@ -743,15 +726,12 @@ const TrackingPage = () => {
             <div className="status-badge">{trackingData.status}</div>
           </div>
 
-          {/* Card content */}
           <div className="card-content">
-            {/* Order ID */}
             <div className="order-id-section">
               <div className="order-id-label">Order ID</div>
               <div className="order-id">{trackingData.orderId}</div>
             </div>
 
-            {/* Info grid */}
             <div className="info-grid">
               <div className="info-item">
                 <div className="info-label">From</div>
@@ -790,7 +770,6 @@ const TrackingPage = () => {
               </div>
             </div>
 
-            {/* Delivery partner */}
             {trackingData.deliveryPartner && (
               <div className="delivery-partner">
                 <div className="partner-avatar">
@@ -811,7 +790,6 @@ const TrackingPage = () => {
           </div>
         </div>
 
-        {/* Live tracking button */}
         <button className="live-tracking-button">
           <div className="button-content">
             <div className="button-icon">📍</div>

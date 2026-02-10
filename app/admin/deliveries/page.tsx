@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -7,8 +8,7 @@ import {
   getDocs, 
   doc, 
   updateDoc,
-  query,
-  orderBy as firestoreOrderBy
+
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -105,12 +105,12 @@ const AdminDeliveriesPage = () => {
   useEffect(() => {
     if (!authLoading) {
       if (!isAdmin()) {
-        router.push("/welcome");
+        router.push("/");
         return;
       }
       loadDeliveries();
     }
-  }, [authLoading, userData]);
+  }, [authLoading, isAdmin, router, userData]);
 
   const loadDeliveries = async () => {
     try {

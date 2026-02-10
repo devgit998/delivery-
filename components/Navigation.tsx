@@ -1,15 +1,17 @@
 "use client";
 
-import { History, Home, MessageSquare, Plus, Settings, Truck, X } from "lucide-react";
+import { History, Home, MessageSquare, Settings, Truck, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navigation = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -18,15 +20,19 @@ const Navigation = () => {
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/history", icon: History, label: "History" },
-    { href: "/create", icon: Truck, label: "Create", isCenter: true },
+    { href: "/history", icon: History, label: "History", requiresAuth: true },
+    { href: "/create", icon: Truck, label: "Create", isCenter: true, requiresAuth: true },
     { href: "/messages", icon: MessageSquare, label: "Messages", isContact: true },
-    { href: "/dashboard", icon: Settings, label: "Dashboard" },
+    { href: "/dashboard", icon: Settings, label: "Dashboard", requiresAuth: true },
   ];
 
   const handleFabClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    setShowModal(true);
+    if (!user) {
+      router.push("/auth/sign-in");
+    } else {
+      router.push("/create");
+    }
   };
 
   const handleContactClick = (e: React.MouseEvent) => {
@@ -601,6 +607,34 @@ const Navigation = () => {
                 <button
                   key={item.href}
                   onClick={handleContactClick}
+                  className={`nav-item ${isActive ? "nav-item-active" : ""}`}
+                  style={{ background: "none", border: "none" }}
+                >
+                  <Icon
+                    className="nav-icon"
+                    size={24}
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  <span className="nav-label">{item.label}</span>
+                </button>
+              );
+            }
+
+            // Check if route requires authentication
+            if (item.requiresAuth) {
+              const handleAuthClick = (e: React.MouseEvent) => {
+                e.preventDefault();
+                if (!user) {
+                  router.push("/auth/sign-in");
+                } else {
+                  router.push(item.href);
+                }
+              };
+
+              return (
+                <button
+                  key={item.href}
+                  onClick={handleAuthClick}
                   className={`nav-item ${isActive ? "nav-item-active" : ""}`}
                   style={{ background: "none", border: "none" }}
                 >

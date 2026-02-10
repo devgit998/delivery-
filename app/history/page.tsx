@@ -45,6 +45,7 @@ const Page = () => {
     if (user) {
       fetchDeliveries();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchDeliveries = async () => {
@@ -799,7 +800,7 @@ const Page = () => {
           /* Shipments list */
           <div className="shipments-list">
             {filteredShipments.length > 0 ? (
-              filteredShipments.map((shipment, index) => (
+              filteredShipments.map((shipment) => (
                 <div
                   key={shipment.orderId}
                   className={`shipment-card ${

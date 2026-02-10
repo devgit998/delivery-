@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -5,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Header from "@/components/Header";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminProtectedRoute } from "@/components/Adminprotectedroute";
 
 interface DeliveryFormData {
   fromName: string;
@@ -133,7 +134,7 @@ const CreateDeliveryPage = () => {
   };
 
   return (
-    <ProtectedRoute>
+    <AdminProtectedRoute>
       <div className="create-delivery-container">
         <Header />
         <style jsx>{`
@@ -154,7 +155,6 @@ const CreateDeliveryPage = () => {
             overflow: hidden;
           }
 
-          /* Animated grid background */
           .create-delivery-container::before {
             content: "";
             position: absolute;
@@ -179,7 +179,6 @@ const CreateDeliveryPage = () => {
             }
           }
 
-          /* Glowing orbs */
           .glow-orb {
             position: absolute;
             border-radius: 50%;
@@ -226,7 +225,6 @@ const CreateDeliveryPage = () => {
             }
           }
 
-          /* Content wrapper */
           .content-wrapper {
             max-width: 800px;
             margin: 0 auto;
@@ -235,7 +233,6 @@ const CreateDeliveryPage = () => {
             padding-top: 20px;
           }
 
-          /* Header */
           .page-header {
             margin-bottom: 32px;
             animation: fadeInDown 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -267,7 +264,6 @@ const CreateDeliveryPage = () => {
             font-size: 16px;
           }
 
-          /* Form card */
           .form-card {
             background: linear-gradient(
               135deg,
@@ -324,7 +320,6 @@ const CreateDeliveryPage = () => {
             }
           }
 
-          /* Error message */
           .error-message {
             background: rgba(255, 85, 0, 0.1);
             border: 1px solid rgba(255, 85, 0, 0.3);
@@ -336,7 +331,6 @@ const CreateDeliveryPage = () => {
             font-weight: 500;
           }
 
-          /* Form sections */
           .form-section {
             margin-bottom: 40px;
           }
@@ -362,7 +356,6 @@ const CreateDeliveryPage = () => {
             font-size: 16px;
           }
 
-          /* Form grid */
           .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -373,7 +366,6 @@ const CreateDeliveryPage = () => {
             grid-column: 1 / -1;
           }
 
-          /* Form group */
           .form-group {
             display: flex;
             flex-direction: column;
@@ -428,7 +420,6 @@ const CreateDeliveryPage = () => {
             cursor: pointer;
           }
 
-          /* Submit button */
           .submit-button {
             width: 100%;
             padding: 20px;
@@ -483,7 +474,6 @@ const CreateDeliveryPage = () => {
             cursor: not-allowed;
           }
 
-          /* Responsive */
           @media (max-width: 768px) {
             .form-card {
               padding: 28px 20px;
@@ -499,12 +489,10 @@ const CreateDeliveryPage = () => {
           }
         `}</style>
 
-        {/* Background elements */}
         <div className="glow-orb glow-orb-1"></div>
         <div className="glow-orb glow-orb-2"></div>
 
         <div className="content-wrapper">
-          {/* Header */}
           <div className="page-header">
             <h1 className="page-title">Create Delivery</h1>
             <p className="page-subtitle">
@@ -512,7 +500,6 @@ const CreateDeliveryPage = () => {
             </p>
           </div>
 
-          {/* Form */}
           <div className="form-card">
             {error && <div className="error-message">{error}</div>}
 
@@ -732,7 +719,6 @@ const CreateDeliveryPage = () => {
                 </div>
               </div>
 
-              {/* Submit */}
               <button type="submit" className="submit-button" disabled={loading}>
                 {loading ? "Creating Delivery..." : "Create Delivery"}
               </button>
@@ -740,7 +726,7 @@ const CreateDeliveryPage = () => {
           </div>
         </div>
       </div>
-    </ProtectedRoute>
+    </AdminProtectedRoute>
   );
 };
 
