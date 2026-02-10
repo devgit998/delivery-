@@ -28,7 +28,7 @@ export const ProtectedRoute = ({
 
       // Require super admin
       if (requireSuperAdmin && userData?.role !== "super_admin") {
-        router.push("/welcome");
+        router.push("/");
         return;
       }
 
@@ -38,7 +38,7 @@ export const ProtectedRoute = ({
         userData?.role !== "admin" &&
         userData?.role !== "super_admin"
       ) {
-        router.push("/welcome");
+        router.push("/");
         return;
       }
     }
