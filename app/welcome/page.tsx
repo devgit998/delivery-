@@ -1,11 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const Page = () => {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [orderIdSearch, setOrderIdSearch] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   const slides = [
     {
@@ -28,8 +33,52 @@ const Page = () => {
     },
   ];
 
+  // Automatic slide transition
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000); // Change slide every 4 seconds
+
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
   const handleGetStarted = () => {
-    router.push("/dashboard");
+    router.push("/create-delivery");
+  };
+
+  const handleSearchOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!orderIdSearch.trim()) {
+      setSearchError("Please enter an Order ID");
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchError("");
+
+    try {
+      const deliveriesRef = collection(db, "deliveries");
+      const q = query(
+        deliveriesRef,
+        where("orderId", "==", orderIdSearch.trim())
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setSearchError("Order not found. Please check the Order ID and try again.");
+        setSearchLoading(false);
+        return;
+      }
+
+      // Order found, redirect to tracking page
+      router.push(`/tracking/${orderIdSearch.trim()}`);
+    } catch (error) {
+      console.error("Error searching for order:", error);
+      setSearchError("Failed to search. Please try again.");
+      setSearchLoading(false);
+    }
   };
 
   return (
@@ -131,9 +180,9 @@ const Page = () => {
           position: relative;
           z-index: 2;
           font-size: 180px;
-          animation: truckFloat 3s ease-in-out infinite,
-            fadeInScale 1s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: truckFloat 3s ease-in-out infinite;
           filter: drop-shadow(0 20px 60px rgba(255, 85, 0, 0.4));
+          transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
         }
 
         @keyframes truckFloat {
@@ -241,6 +290,8 @@ const Page = () => {
           border-radius: 4px;
           transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
           cursor: pointer;
+          position: relative;
+          overflow: hidden;
         }
 
         .dot:hover {
@@ -253,7 +304,28 @@ const Page = () => {
           box-shadow: 0 0 20px rgba(255, 85, 0, 0.6);
         }
 
-        /* Text content */
+        /* Progress bar for active dot */
+        .dot-active::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: 100%;
+          width: 0%;
+          background: rgba(255, 255, 255, 0.3);
+          animation: dotProgress 4s linear;
+        }
+
+        @keyframes dotProgress {
+          from {
+            width: 0%;
+          }
+          to {
+            width: 100%;
+          }
+        }
+
+        /* Text content with smooth transitions */
         .title {
           font-size: 36px;
           font-weight: 800;
@@ -261,7 +333,7 @@ const Page = () => {
           margin-bottom: 16px;
           line-height: 1.2;
           letter-spacing: -0.5px;
-          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.5s backwards;
+          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes fadeInUp {
@@ -281,7 +353,7 @@ const Page = () => {
           color: #888888;
           line-height: 1.6;
           margin-bottom: 40px;
-          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s backwards;
+          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
         }
 
         /* Get Started Button */
@@ -303,7 +375,6 @@ const Page = () => {
           gap: 16px;
           box-shadow: 0 12px 32px rgba(255, 85, 0, 0.5),
             0 0 40px rgba(255, 85, 0, 0.3);
-          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.7s backwards;
           position: relative;
           overflow: hidden;
         }
@@ -367,30 +438,138 @@ const Page = () => {
           transform: translateX(4px);
         }
 
-        /* Skip button */
-        .skip-button {
-          width: 100%;
-          padding: 16px 24px;
-          background: transparent;
-          border: 1.5px solid #1a1a1a;
-          border-radius: 16px;
-          color: #888888;
-          font-size: 16px;
-          font-weight: 600;
-          font-family: "Urbanist", sans-serif;
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          margin-top: 12px;
+        /* Divider */
+        .divider {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin: 20px 0;
           animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s backwards;
         }
 
-        .skip-button:hover {
+        .divider-line {
+          flex: 1;
+          height: 1px;
+          background: #1a1a1a;
+        }
+
+        .divider-text {
+          color: #666666;
+          font-size: 13px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        /* Search form */
+        .search-form {
+          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.9s backwards;
+        }
+
+        .search-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: #888888;
+          margin-bottom: 12px;
+          display: block;
+          text-align: center;
+        }
+
+        .search-input-wrapper {
+          position: relative;
+          margin-bottom: 8px;
+        }
+
+        .search-input {
+          width: 100%;
+          padding: 18px 56px 18px 20px;
           background: #0a0a0a;
+          border: 1.5px solid #1a1a1a;
+          border-radius: 16px;
+          color: #ffffff;
+          font-size: 16px;
+          font-family: "Azeret Mono", monospace;
+          font-weight: 600;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          outline: none;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .search-input::placeholder {
+          color: #666666;
+          font-family: "Urbanist", sans-serif;
+          font-weight: 500;
+          text-transform: none;
+          letter-spacing: 0;
+        }
+
+        .search-input:focus {
+          background: #000000;
           border-color: #ff5500;
+          box-shadow: 0 0 0 4px rgba(255, 85, 0, 0.2),
+            0 8px 24px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 85, 0, 0.15);
+        }
+
+        .search-button {
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 44px;
+          height: 44px;
+          background: linear-gradient(135deg, #ff5500, #ff3300);
+          border: none;
+          border-radius: 12px;
+          color: #ffffff;
+          font-size: 20px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 4px 12px rgba(255, 85, 0, 0.4);
+        }
+
+        .search-button:hover {
+          transform: translateY(-50%) scale(1.05);
+          box-shadow: 0 6px 16px rgba(255, 85, 0, 0.6);
+        }
+
+        .search-button:active {
+          transform: translateY(-50%) scale(0.98);
+        }
+
+        .search-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        /* Error message */
+        .error-message {
+          background: rgba(255, 85, 0, 0.1);
+          border: 1px solid rgba(255, 85, 0, 0.3);
+          border-radius: 12px;
+          padding: 12px 16px;
+          margin-top: 12px;
           color: #ff5500;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6),
-            0 0 20px rgba(255, 85, 0, 0.1);
+          font-size: 13px;
+          font-weight: 500;
+          text-align: center;
+          animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+        }
+
+        @keyframes shake {
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          25% {
+            transform: translateX(-8px);
+          }
+          75% {
+            transform: translateX(8px);
+          }
         }
 
         /* Glowing particles */
@@ -483,7 +662,9 @@ const Page = () => {
         <div className="hero-overlay"></div>
 
         {/* Truck illustration */}
-        <div className="truck-illustration">{slides[currentSlide].image}</div>
+        <div className="truck-illustration" key={currentSlide}>
+          {slides[currentSlide].image}
+        </div>
 
         {/* Road effect */}
         <div className="road-effect">
@@ -506,8 +687,12 @@ const Page = () => {
           </div>
 
           {/* Title and Description */}
-          <h1 className="title">{slides[currentSlide].title}</h1>
-          <p className="description">{slides[currentSlide].description}</p>
+          <h1 className="title" key={`title-${currentSlide}`}>
+            {slides[currentSlide].title}
+          </h1>
+          <p className="description" key={`desc-${currentSlide}`}>
+            {slides[currentSlide].description}
+          </p>
 
           {/* Get Started Button */}
           <button className="get-started-button" onClick={handleGetStarted}>
@@ -518,10 +703,38 @@ const Page = () => {
             <div className="button-arrow">››</div>
           </button>
 
-          {/* Skip Button */}
-          <button className="skip-button" onClick={handleGetStarted}>
-            Skip
-          </button>
+          {/* Divider */}
+          <div className="divider">
+            <div className="divider-line"></div>
+            <div className="divider-text">Or Track Existing Order</div>
+            <div className="divider-line"></div>
+          </div>
+
+          {/* Search Order Form */}
+          <form className="search-form" onSubmit={handleSearchOrder}>
+            <label className="search-label">Enter Order ID to Track</label>
+            <div className="search-input-wrapper">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="e.g., ORD-1234567890"
+                value={orderIdSearch}
+                onChange={(e) => {
+                  setOrderIdSearch(e.target.value);
+                  setSearchError("");
+                }}
+                disabled={searchLoading}
+              />
+              <button
+                type="submit"
+                className="search-button"
+                disabled={searchLoading}
+              >
+                {searchLoading ? "⏳" : "🔍"}
+              </button>
+            </div>
+            {searchError && <div className="error-message">{searchError}</div>}
+          </form>
         </div>
       </div>
     </div>

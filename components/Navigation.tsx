@@ -1,21 +1,27 @@
 "use client";
 
-import { Home, MessageSquare, Plus, Settings, Truck, X } from "lucide-react";
+import { History, Home, MessageSquare, Plus, Settings, Truck, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const Navigation = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/trackshipping", icon: Truck, label: "Track" },
-    { href: "/create", icon: Plus, label: "Create", isCenter: true },
-    { href: "/messages", icon: MessageSquare, label: "Messages" },
-    { href: "/settings", icon: Settings, label: "Settings" },
+    { href: "/history", icon: History, label: "History" },
+    { href: "/create", icon: Truck, label: "Create", isCenter: true },
+    { href: "/messages", icon: MessageSquare, label: "Messages", isContact: true },
+    { href: "/dashboard", icon: Settings, label: "Dashboard" },
   ];
 
   const handleFabClick = (e: React.MouseEvent) => {
@@ -23,17 +29,57 @@ const Navigation = () => {
     setShowModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    console.log("Tracking number:", trackingNumber);
-    // Handle tracking number submission here
-    setShowModal(false);
-    setTrackingNumber("");
+    setShowContactModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!trackingNumber.trim()) {
+      setSearchError("Please enter a tracking number");
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchError("");
+
+    try {
+      const deliveriesRef = collection(db, "deliveries");
+      const q = query(
+        deliveriesRef,
+        where("orderId", "==", trackingNumber.trim())
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setSearchError("Order not found. Please check the tracking number and try again.");
+        setSearchLoading(false);
+        return;
+      }
+
+      // Order found, redirect to tracking page
+      setShowModal(false);
+      setTrackingNumber("");
+      router.push(`/tracking/${trackingNumber.trim()}`);
+    } catch (error) {
+      console.error("Error searching for order:", error);
+      setSearchError("Failed to search. Please try again.");
+      setSearchLoading(false);
+    }
   };
 
   const handleClose = () => {
     setShowModal(false);
     setTrackingNumber("");
+    setSearchError("");
+    setSearchLoading(false);
+  };
+
+  const handleContactClose = () => {
+    setShowContactModal(false);
   };
 
   return (
@@ -423,6 +469,112 @@ const Navigation = () => {
           opacity: 0.5;
           cursor: not-allowed;
         }
+
+        /* Error message */
+        .error-message {
+          background: rgba(255, 85, 0, 0.1);
+          border: 1px solid rgba(255, 85, 0, 0.3);
+          border-radius: 12px;
+          padding: 12px 16px;
+          margin-bottom: 16px;
+          color: #ff5500;
+          font-size: 13px;
+          font-weight: 500;
+          text-align: center;
+          animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+        }
+
+        @keyframes shake {
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          25% {
+            transform: translateX(-8px);
+          }
+          75% {
+            transform: translateX(8px);
+          }
+        }
+
+        /* Contact Modal Styles */
+        .contact-info {
+          text-align: center;
+          padding: 20px 0;
+        }
+
+        .contact-icon {
+          font-size: 64px;
+          margin-bottom: 20px;
+          animation: phoneRing 2s ease-in-out infinite;
+        }
+
+        @keyframes phoneRing {
+          0%,
+          100% {
+            transform: rotate(0deg);
+          }
+          10%,
+          30% {
+            transform: rotate(-15deg);
+          }
+          20%,
+          40% {
+            transform: rotate(15deg);
+          }
+        }
+
+        .contact-title {
+          font-size: 20px;
+          font-weight: 700;
+          color: #ffffff;
+          margin-bottom: 8px;
+        }
+
+        .contact-subtitle {
+          font-size: 14px;
+          color: #888888;
+          margin-bottom: 24px;
+        }
+
+        .phone-number {
+          font-size: 32px;
+          font-weight: 800;
+          background: linear-gradient(135deg, #ff5500 0%, #ff3300 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 24px;
+          font-family: "Azeret Mono", monospace;
+          letter-spacing: 2px;
+        }
+
+        .call-button {
+          width: 100%;
+          padding: 18px 20px;
+          background: linear-gradient(135deg, #ff5500 0%, #ff3300 100%);
+          border: none;
+          border-radius: 14px;
+          color: #ffffff;
+          font-size: 17px;
+          font-weight: 700;
+          font-family: "Urbanist", sans-serif;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 12px 32px rgba(255, 85, 0, 0.5),
+            0 0 40px rgba(255, 85, 0, 0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          text-decoration: none;
+        }
+
+        .call-button:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 16px 48px rgba(255, 85, 0, 0.6),
+            0 0 60px rgba(255, 85, 0, 0.4);
+        }
       `}</style>
 
       <nav className="bottom-navigation">
@@ -440,6 +592,24 @@ const Navigation = () => {
                   style={{ flex: 0 }}
                 >
                   <Icon size={28} strokeWidth={2.5} />
+                </button>
+              );
+            }
+
+            if (item.isContact) {
+              return (
+                <button
+                  key={item.href}
+                  onClick={handleContactClick}
+                  className={`nav-item ${isActive ? "nav-item-active" : ""}`}
+                  style={{ background: "none", border: "none" }}
+                >
+                  <Icon
+                    className="nav-icon"
+                    size={24}
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  <span className="nav-label">{item.label}</span>
                 </button>
               );
             }
@@ -462,26 +632,27 @@ const Navigation = () => {
         </div>
       </nav>
 
-      {/* Modal */}
+      {/* Tracking Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleClose}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Add Tracking Number</h2>
+              <h2 className="modal-title">Track Your Order</h2>
               <button className="close-button" onClick={handleClose}>
                 <X size={20} />
               </button>
             </div>
 
             <p className="modal-description">
-              Enter your tracking number to start monitoring your shipment in
-              real-time.
+              Enter your order ID to track your shipment in real-time and see its current location.
             </p>
 
             <form onSubmit={handleSubmit}>
+              {searchError && <div className="error-message">{searchError}</div>}
+              
               <div className="form-group">
                 <label htmlFor="tracking-number" className="form-label">
-                  Tracking Number
+                  Order ID
                 </label>
                 <input
                   type="text"
@@ -489,20 +660,51 @@ const Navigation = () => {
                   className="form-input"
                   placeholder="e.g., ORD-123456789"
                   value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  onChange={(e) => {
+                    setTrackingNumber(e.target.value);
+                    setSearchError("");
+                  }}
                   autoFocus
                   required
+                  disabled={searchLoading}
                 />
               </div>
 
               <button
                 type="submit"
                 className="submit-button"
-                disabled={!trackingNumber.trim()}
+                disabled={!trackingNumber.trim() || searchLoading}
               >
-                Start Tracking
+                {searchLoading ? "Searching..." : "Track Order"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Modal */}
+      {showContactModal && (
+        <div className="modal-overlay" onClick={handleContactClose}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Contact Support</h2>
+              <button className="close-button" onClick={handleContactClose}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="contact-info">
+              <div className="contact-icon">📞</div>
+              <div className="contact-title">Customer Support</div>
+              <div className="contact-subtitle">
+                Available 24/7 to assist you
+              </div>
+              <div className="phone-number">1-800-SHIP-NOW</div>
+              <a href="tel:1-800-744-7669" className="call-button">
+                <span>📱</span>
+                <span>Call Now</span>
+              </a>
+            </div>
           </div>
         </div>
       )}
