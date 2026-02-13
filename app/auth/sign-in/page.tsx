@@ -36,13 +36,13 @@ const SignInPage = () => {
       await signIn(formData.email, formData.password);
       router.push("/");
     } catch (error: any) {
-      setError(error.message || "Failed to sign in. Please check your credentials.");
+      setError(
+        error.message || "Failed to sign in. Please check your credentials."
+      );
     } finally {
       setIsLoading(false);
     }
   };
-
- 
 
   return (
     <div className="auth-container">
@@ -687,11 +687,10 @@ const SignInPage = () => {
             </button>
           </form>
 
-          
-
           {/* Footer */}
           <div className="footer">
-            Don&apos;t have an account? <Link href="/auth/sign-up">Sign up</Link>
+            Don&apos;t have an account?.{" "}
+            <Link href="/auth/sign-up">Sign up</Link>
           </div>
         </div>
       </div>
